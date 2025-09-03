@@ -37,9 +37,10 @@
       map.addListener("click", (event) => {
         selectedLocation = event.latLng;
         if (currentMarker) currentMarker.map = null; // remove old marker
-        currentMarker = new google.maps.marker.AdvancedMarkerElement({
-          position: selectedLocation,
-          map: map,
+currentMarker = new google.maps.Marker({
+  position: selectedLocation,
+  map: map,
+});
         });
       });
 
