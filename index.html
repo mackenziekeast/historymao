@@ -1,80 +1,87 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>History Map</title>
-    <style>
-      #map { height: 80vh; width: 100%; }
-      #controls { margin: 10px; }
-    </style>
-  </head>
-  <body>
-    <h1>History Map</h1>
-    <div id="controls">
-      <label for="start">From: </label>
-      <input type="number" id="start" value="1800">
-      <label for="end">To: </label>
-      <input type="number" id="end" value="2000">
-      <button id="loadHistory">Load History</button>
-    </div>
-    <div id="map"></div>
-    <div id="results"></div>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Historical Map Explorer</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; }
+    h2 { padding: 10px; background: #333; color: white; margin: 0; }
+    #map { height: 70vh; width: 100%; }
+    #controls { padding: 10px; background: #f4f4f4; display: flex; gap: 10px; align-items: center; }
+    #results { padding: 10px; }
+    .event { margin: 8px 0; padding: 8px; border-bottom: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <h2>Historical Map Explorer</h2>
+  <div id="map"></div>
+  <div id="controls">
+    <input type="text" id="yearFilter" placeholder="Filter by year (e.g. 1945)">
+    <button id="loadHistory">Load History</button>
+  </div>
+  <div id="results"><h3>Click a location to begin</h3></div>
 
-    <script>
-      let map, marker, lastLocation;
+  <script>
+    let map;
+    let currentMarker = null;
+    let selectedLocation = null;
 
-      function initMap() {
-        map = new google.maps.Map(document.getElementById("map"), {
-          center: { lat: 43.6532, lng: -79.3832 }, // Toronto default
-          zoom: 5,
+    function initMap() {
+      // Initialize map
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 43.6532, lng: -79.3832 }, // Toronto default
+        zoom: 5,
+      });
+
+      // Place marker on click
+      map.addListener("click", (event) => {
+        selectedLocation = event.latLng;
+        if (currentMarker) currentMarker.map = null; // remove old marker
+        currentMarker = new google.maps.marker.AdvancedMarkerElement({
+          position: selectedLocation,
+          map: map,
         });
+      });
 
-        map.addListener("click", (event) => {
-          if (marker) marker.map = null; // remove old
-          marker = new google.maps.marker.AdvancedMarkerElement({
-            position: event.latLng,
-            map: map
-          });
-          lastLocation = event.latLng;
-        });
+      // Load History button
+      document.getElementById("loadHistory").addEventListener("click", async () => {
+        if (!selectedLocation) {
+          alert("Click a location on the map first.");
+          return;
+        }
+        await loadHistory(selectedLocation);
+      });
+    }
 
-        document.getElementById("loadHistory").addEventListener("click", () => {
-          if (!lastLocation) {
-            alert("Click on the map first!");
-            return;
-          }
-          loadHistory(lastLocation);
-        });
+    async function loadHistory(latLng) {
+      const yearFilter = document.getElementById("yearFilter").value;
+      const resultsDiv = document.getElementById("results");
+      resultsDiv.innerHTML = "<h3>Loading events...</h3>";
+
+      // Placeholder: replace this with real Wikidata/SPARQL fetch later
+      const dummyEvents = [
+        { title: "Event A", date: "1945", link: "https://en.wikipedia.org/wiki/1945" },
+        { title: "Event B", date: "1969", link: "https://en.wikipedia.org/wiki/1969" },
+        { title: "Event C", date: "2000", link: "https://en.wikipedia.org/wiki/2000" }
+      ];
+
+      resultsDiv.innerHTML = "<h3>Historical Events</h3>";
+      let shown = 0;
+      for (let e of dummyEvents) {
+        if (yearFilter && !e.date.includes(yearFilter)) continue;
+        const div = document.createElement("div");
+        div.className = "event";
+        div.innerHTML = `<strong>${e.title}</strong> (${e.date})<br><a href="${e.link}" target="_blank">Read more</a>`;
+        resultsDiv.appendChild(div);
+        shown++;
       }
+      if (shown === 0) resultsDiv.innerHTML += "<p>No events found.</p>";
+    }
+  </script>
 
-      async function loadHistory(latLng) {
-        const start = document.getElementById("start").value;
-        const end = document.getElementById("end").value;
-
-        // Example Wikidata query placeholder
-        const query = `
-          SELECT ?item ?itemLabel ?date WHERE {
-            ?item wdt:P31/wdt:P279* wd:Q178561 .
-            ?item wdt:P585 ?date .
-            FILTER (?date >= "${start}-01-01T00:00:00Z"^^xsd:dateTime &&
-                    ?date <= "${end}-12-31T23:59:59Z"^^xsd:dateTime)
-            SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
-          } LIMIT 10
-        `;
-        console.log(query);
-        document.getElementById("results").innerHTML = `<p>Wikidata query placeholder. (Needs real SPARQL fetch.)</p>`;
-      }
-    </script>
-
-    <script async
-      src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap">
-    </script>
-  </body>
-</html>
-
-  <!-- Google Maps API -->
+  <!-- Google Maps JS API -->
   <script async
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBp_QZzDb5dPMiyWmusyZSvdLXHivD_Yq4&callback=initMap">
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBp_QZzDb5dPMiyWmusyZSvdLXHivD_Yq4&callback=initMap&v=weekly&loading=async">
   </script>
 </body>
 </html>
