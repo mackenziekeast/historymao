@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Historical Map Explorer</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; }
+    h2 { padding: 10px; background: #333; color: white; margin: 0; }
+    #map { height: 70vh; width: 100%; }
+    #controls {
+      padding: 10px; background: #f4f4f4;
+      display: flex; gap: 10px; align-items: center;
+    }
+    #results { padding: 10px; }
+    .event { margin: 8px 0; padding: 8px; border-bottom: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <h2>Historical Map Explorer</h2>
+  <div id="map"></div>
+  <div id="controls">
+    <input type="text" id="yearFilter" placeholder="Filter by year (e.g. 1945)">
+    <button onclick="loadHistory()">Load History</button>
+  </div>
+  <div id="results"><h3>Click a location to begin</h3></div>
+
+  <script>
+    let map, selectedLocation = null, currentMarker = null;
+
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 40.7128, lng: -74.0060 },
+        zoom: 5,
+      });
+
+      map.addListener("click", (event) => {
+        selectedLocation = event.latLng;
+        if (currentMarker) currentMarker.map = null;
+        currentMarker = new google.maps.marker.AdvancedMarkerElement({
+          position: selectedLocation,
+          map: map,
+        });
+      });
+    }
+
+    async function loadHistory() {
+      if (!selectedLocation) {
+        alert("Click a location on the map first.");
+        return;
+      }
+
+      const lat = selectedLocation.lat();
+      const lng = selectedLocation.lng();
+      const yearFilter = document.getElementById("yearFilter").value;
+
+      const query = `
+        SELECT ?event ?eventLabel ?eventDate ?article WHERE {
+          SERVICE wikibase:around {
+            ?event wdt:P625 ?location .
+            bd:serviceParam wikibase:center "Point(${lng} ${lat})"^^geo:wktLiteral .
+            bd:serviceParam wikibase:radius "10" .
+          }
+          ?event wdt:P31/wdt:P279* wd:Q1190554 .
+          OPTIONAL { ?event wdt:P585 ?eventDate }
+          OPTIONAL { ?article schema:about ?event; schema:isPartOf <https://en.wikipedia.org/> . }
+          SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+        }
+        LIMIT 20
+      `;
+
+      const url = "https://query.wikidata.org/sparql?query=" + encodeURIComponent(query);
+      const headers = { "Accept": "application/sparql-results+json" };
+
+      let resultsDiv = document.getElementById("results");
+      resultsDiv.innerHTML = "<h3>Loading events...</h3>";
+
+      try {
+        const response = await fetch(url, { headers });
+        if (!response.ok) throw new Error("SPARQL request failed");
+        const data = await response.json();
+
+        let shown = 0;
+        resultsDiv.innerHTML = "<h3>Historical Events</h3>";
+
+        for (let row of data.results.bindings) {
+          const title = row.eventLabel.value;
+          const date = row.eventDate ? row.eventDate.value : "Unknown date";
+          const link = row.article ? row.article.value : null;
+          if (!link) continue;
+
+          if (yearFilter && !date.includes(yearFilter)) continue;
+
+          const pageTitle = decodeURIComponent(link.split("/").pop());
+          const popular = await isPopular(pageTitle);
+          if (!popular) continue;
+
+          const div = document.createElement("div");
+          div.className = "event";
+          div.innerHTML = `<strong>${title}</strong> (${date})<br><a href="${link}" target="_blank">Read more</a>`;
+          resultsDiv.appendChild(div);
+          shown++;
+        }
+
+        if (shown === 0) {
+          resultsDiv.innerHTML += "<p>No matching events found.</p>";
+        }
+
+      } catch (err) {
+        console.error("SPARQL or rendering error", err);
+        resultsDiv.innerHTML = "<p style='color:red;'>Error fetching historical data. Make sure you run this file from a server (http://...), not file://</p>";
+      }
+    }
+
+    async function isPopular(pageTitle) {
+      try {
+        const today = new Date();
+        const endDate = today.toISOString().slice(0,10).replace(/-/g,"");
+        const past = new Date();
+        past.setDate(today.getDate()-30);
+        const startDate = past.toISOString().slice(0,10).replace(/-/g,"");
+
+        const url = `https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/user/${encodeURIComponent(pageTitle)}/daily/${startDate}/${endDate}`;
+        const resp = await fetch(url);
+        if (!resp.ok) return false;
+        const data = await resp.json();
+        if (!data.items) return false;
+
+        const avg = data.items.reduce((a,b)=>a+b.views,0)/data.items.length;
+        return avg > 50; // filter threshold
+      } catch(e) {
+        return false;
+      }
+    }
+  </script>
+
+  <!-- Google Maps API -->
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap&loading=async&v=weekly"
+    async defer>
+  </script>
+</body>
+</html>
+
+  <!-- Google Maps API -->
+  <script async
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBp_QZzDb5dPMiyWmusyZSvdLXHivD_Yq4&callback=initMap">
+  </script>
+</body>
+</html>
