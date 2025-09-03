@@ -36,11 +36,10 @@
       // Place marker on click
       map.addListener("click", (event) => {
         selectedLocation = event.latLng;
-        if (currentMarker) currentMarker.map = null; // remove old marker
-currentMarker = new google.maps.Marker({
-  position: selectedLocation,
-  map: map,
-});
+        if (currentMarker) currentMarker.setMap(null); // remove old marker
+        currentMarker = new google.maps.Marker({
+          position: selectedLocation,
+          map: map,
         });
       });
 
@@ -59,7 +58,7 @@ currentMarker = new google.maps.Marker({
       const resultsDiv = document.getElementById("results");
       resultsDiv.innerHTML = "<h3>Loading events...</h3>";
 
-      // Placeholder: replace this with real Wikidata/SPARQL fetch later
+      // Placeholder events - replace with real Wikidata/SPARQL later
       const dummyEvents = [
         { title: "Event A", date: "1945", link: "https://en.wikipedia.org/wiki/1945" },
         { title: "Event B", date: "1969", link: "https://en.wikipedia.org/wiki/1969" },
@@ -81,8 +80,8 @@ currentMarker = new google.maps.Marker({
   </script>
 
   <!-- Google Maps JS API -->
-  <script async
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCOKckKRrDdTHBhUEfB9LXEsKn-jd1GUPs&callback=initMap&v=weekly&loading=async">
+  <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCOKckKRrDdTHBhUEfB9LXEsKn-jd1GUPs&callback=initMap">
   </script>
 </body>
 </html>
